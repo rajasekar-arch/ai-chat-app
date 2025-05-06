@@ -7,9 +7,9 @@ export default function Home() {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>(
     []
   );
+  const [loading, setLoading] = useState(false);
 
   const handleSend = async () => {
-    debugger;
     if (!navigator.onLine) {
       alert("You're offline. Please check your internet connection.");
       return;
@@ -18,10 +18,9 @@ export default function Home() {
     if (!input.trim()) return;
 
     const userMessage = { role: "user", content: input };
-    setInput("");
-
-    // First, optimistically add user's message
     setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
 
     try {
       const res = await fetch("/api/generate-chat", {
@@ -31,17 +30,19 @@ export default function Home() {
       });
 
       const data = await res.json();
-
       if (data.error) {
         alert(data.error);
+        setLoading(false);
         return;
       }
-      const botMessage = { role:"assistant", content: data.story };
-      // Append bot response
+
+      const botMessage = { role: "assistant", content: data.story };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Fetch error:", error);
       alert("Failed to fetch. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,15 +56,15 @@ export default function Home() {
               msg.role === "user" ? "text-right" : "text-left"
             }`}
           >
-            <span
-              className={`px-3 py-2 rounded inline-block ${
-                msg.role === "user" ? "bg-blue-100" : "bg-gray-200"
-              }`}
-            >
+            <span className="px-3 py-2 bg-gray-200 rounded inline-block">
               {msg.content}
             </span>
           </div>
         ))}
+
+        {loading && (
+          <div className="text-left text-gray-500 italic">Generating...</div>
+        )}
       </div>
 
       <div className="flex gap-2 mb-2">
@@ -75,9 +76,7 @@ export default function Home() {
           <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
           <option value="openai/gpt-4">GPT-4</option>
           <option value="mistralai/mixtral-8x7b">Mixtral 8x7B</option>
-          <option value="meta-llama/llama-3-70b-instruct">
-            LLaMA 3 70B Instruct
-          </option>
+          <option value="meta-llama/llama-3-70b-instruct">LLaMA 3 70B</option>
         </select>
       </div>
 
@@ -88,15 +87,16 @@ export default function Home() {
           onChange={(e) => setInput(e.target.value)}
           className="border p-2 rounded flex-1"
           placeholder="Ask me anything..."
+          disabled={loading}
         />
         <button
           onClick={handleSend}
           className="bg-blue-600 text-white px-4 py-2 rounded"
+          disabled={loading}
         >
-          Send
+          {loading ? "Sending..." : "Send"}
         </button>
       </div>
     </main>
   );
 }
-
